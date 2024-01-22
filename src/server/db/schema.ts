@@ -8,19 +8,19 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
-export const user_type = pgEnum("user_type", ["client", "member", "both"]);
-export const user_status = pgEnum("user_status", ["active", "deleted"]);
-export const login_method = pgEnum("login_method", ["email", "phone", "oauth"]);
+export const userType = pgEnum("user_type", ["client", "member", "both"]);
+export const userStatus = pgEnum("user_status", ["active", "deleted"]);
+export const loginMethod = pgEnum("login_method", ["email", "phone", "oauth"]);
 
 export const users = pgTable("users", {
   id: integer("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   mobile: text("mobile"),
-  userType: user_type("user_type").notNull(),
-  status: user_status("status").notNull(),
+  userType: userType("user_type").notNull(),
+  status: userStatus("status").notNull(),
   verified: boolean("verified").notNull(),
-  loginMethod: login_method("login_method").notNull(),
+  loginMethod: loginMethod("login_method").notNull(),
   passwordHash: text("password_hash"),
   createdAt: timestamp("created_at", {
     mode: "date",
@@ -35,6 +35,7 @@ export const users = pgTable("users", {
 export const userRelations = relations(users, (helpers) => ({
   passwordHistory: helpers.many(userPasswordHistory),
   credentialReset: helpers.many(userCredentialReset),
+  sessions: helpers.many(userSessions),
 }));
 
 export const userPasswordHistory = pgTable("user_password_history", {
@@ -89,3 +90,41 @@ export const userCredentialResetRelations = relations(
     }),
   }),
 );
+
+export const userSessionStatus = pgEnum("user_session_status", [
+  "active",
+  "inactive",
+  "expired",
+]);
+
+export const userSessions = pgTable("user_sessions", {
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  accessToken: text("access_token").notNull(),
+  profileId: text("profile_id").notNull(),
+  deviceIdentifier: text("device_identifier").notNull(),
+  deviceName: text("device_name").notNull(),
+  lastActivityTime: timestamp("last_activity_time", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  status: userSessionStatus("status").notNull(),
+  loginTime: timestamp("login_time", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  ipAddress: text("ip_address").notNull(),
+  location: text("location").notNull(),
+  logoutTime: timestamp("logout_time", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+});
+
+export const userSessionsRelations = relations(userSessions, (helpers) => ({
+  users: helpers.one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
+}));
