@@ -12,5 +12,4 @@ export default {
     password: env.DATABASE_PASSWORD,
     database: env.DATABASE_NAME,
   },
-  tablesFilter: ["realtor-app_*"],
 } satisfies Config;
