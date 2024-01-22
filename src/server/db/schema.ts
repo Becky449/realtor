@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -39,6 +40,8 @@ export const userRelations = relations(users, (helpers) => ({
   verification: helpers.many(userVerification),
   invitations: helpers.many(userInvitations),
   invitedBy: helpers.many(userInvitations),
+  notifications: helpers.many(userNotifications),
+  notificationSources: helpers.many(userNotifications),
 }));
 
 export const userPasswordHistory = pgTable("user_password_history", {
@@ -199,6 +202,45 @@ export const userInvitationsRelations = relations(
     }),
     invitedByUsers: helpers.one(users, {
       fields: [userInvitations.invitedByUserId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const userNotifications = pgTable("user_notifications", {
+  userId: integer("userId").references(() => users.id, {
+    onDelete: "cascade",
+    onUpdate: "cascade",
+  }),
+  profileId: text("profile_id"), //TODO: CONNECT WITH PROFILE TABLE
+  notificationTypeId: integer("notification_type_id"), //TODO: CONNECT WITH NOTIFICATION TABLE
+  targetIdentifier: text("target_identifier").notNull(),
+  sourceIdentifier: text("source_identifier").notNull(),
+  message: text("message").notNull(),
+  params: jsonb("params"),
+  sourceUserId: integer("source_user_id").references(() => users.id, {
+    onDelete: "cascade",
+    onUpdate: "cascade",
+  }),
+  seenAt: timestamp("seen_at", {
+    mode: "date",
+    withTimezone: true,
+  }),
+  sentAt: timestamp("sent_at", {
+    mode: "date",
+    withTimezone: true,
+  }),
+});
+
+export const userNotificationsRelations = relations(
+  userNotifications,
+  (helpers) => ({
+    users: helpers.one(users, {
+      fields: [userNotifications.userId],
+      references: [users.id],
+    }),
+    sourceUsers: helpers.one(users, {
+      fields: [userNotifications.sourceUserId],
       references: [users.id],
     }),
   }),
