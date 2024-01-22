@@ -36,6 +36,7 @@ export const userRelations = relations(users, (helpers) => ({
   passwordHistory: helpers.many(userPasswordHistory),
   credentialReset: helpers.many(userCredentialReset),
   sessions: helpers.many(userSessions),
+  verification: helpers.many(userVerification),
 }));
 
 export const userPasswordHistory = pgTable("user_password_history", {
@@ -128,3 +129,27 @@ export const userSessionsRelations = relations(userSessions, (helpers) => ({
     references: [users.id],
   }),
 }));
+
+export const userVerification = pgTable("user_verification", {
+  userId: integer("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
+  email: text("email"),
+  phone: text("phone"),
+  code: text("code").notNull(),
+  sentAt: timestamp("sent_at", { mode: "date", withTimezone: true }).notNull(),
+  expireAt: timestamp("expire_at", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+});
+
+export const userVerificationRelations = relations(
+  userVerification,
+  (helpers) => ({
+    users: helpers.one(users, {
+      fields: [userVerification.userId],
+      references: [users.id],
+    }),
+  }),
+);
