@@ -37,6 +37,8 @@ export const userRelations = relations(users, (helpers) => ({
   credentialReset: helpers.many(userCredentialReset),
   sessions: helpers.many(userSessions),
   verification: helpers.many(userVerification),
+  invitations: helpers.many(userInvitations),
+  invitedBy: helpers.many(userInvitations),
 }));
 
 export const userPasswordHistory = pgTable("user_password_history", {
@@ -149,6 +151,54 @@ export const userVerificationRelations = relations(
   (helpers) => ({
     users: helpers.one(users, {
       fields: [userVerification.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const userInvitationStatus = pgEnum("user_invitation_status", [
+  "sent",
+  "accepted",
+  "rejected",
+  "expired",
+]);
+
+export const userInvitations = pgTable("user_invitations", {
+  userId: integer("userId").references(() => users.id, {
+    onDelete: "cascade",
+    onUpdate: "cascade",
+  }),
+  invitedByUserId: integer("invitedByUserId").references(() => users.id, {
+    onDelete: "cascade",
+    onUpdate: "cascade",
+  }),
+  token: text("token").notNull(),
+  status: userInvitationStatus("status").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  createdAt: timestamp("created_at", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  updatedAt: timestamp("updated_at", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  exprerAt: timestamp("expire_at", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+});
+
+export const userInvitationsRelations = relations(
+  userInvitations,
+  (helpers) => ({
+    users: helpers.one(users, {
+      fields: [userInvitations.userId],
+      references: [users.id],
+    }),
+    invitedByUsers: helpers.one(users, {
+      fields: [userInvitations.invitedByUserId],
       references: [users.id],
     }),
   }),
