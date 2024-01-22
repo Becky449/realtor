@@ -1,14 +1,16 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { env } from "~/env";
 import * as schema from "./schema";
+import { Client, ClientConfig } from "pg";
 
-const { DATABASE_HOST, DATABASE_NAME, DATABASE_PASSWORD, DATABASE_PORT } = env;
-
-const dbConfig = {
-  host: DATABASE_HOST,
-  name: DATABASE_NAME,
-  password: DATABASE_PASSWORD,
-  port: DATABASE_PORT,
+const dbConfig: ClientConfig = {
+  host: env.DATABASE_HOST,
+  port: env.DATABASE_PORT,
+  user: env.DATABASE_USER,
+  password: env.DATABASE_PASSWORD,
+  database: env.DATABASE_NAME,
 };
 
-export const db = drizzle({ schema });
+const client = new Client(dbConfig);
+await client.connect();
+export const db = drizzle(client, { schema });

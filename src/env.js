@@ -7,7 +7,7 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    DATABASE_PORT: z.string().default("5432"),
+    DATABASE_PORT: z.coerce.number().default(5432),
     DATABASE_HOST: z.string().default("localhost"),
     DATABASE_NAME: z.string().default("postgres"),
     DATABASE_USER: z.string().default("postgres"),
