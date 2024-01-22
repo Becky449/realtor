@@ -100,7 +100,7 @@ export const userSessionStatus = pgEnum("user_session_status", [
 export const userSessions = pgTable("user_sessions", {
   userId: integer("user_id")
     .notNull()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
   accessToken: text("access_token").notNull(),
   profileId: text("profile_id").notNull(),
   deviceIdentifier: text("device_identifier").notNull(),
