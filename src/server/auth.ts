@@ -1,4 +1,5 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { pgTable } from "drizzle-orm/pg-core";
 import { type GetServerSidePropsContext } from "next";
 import {
   getServerSession,
@@ -6,11 +7,12 @@ import {
   type NextAuthOptions,
 } from "next-auth";
 import { type Adapter } from "next-auth/adapters";
-import DiscordProvider from "next-auth/providers/discord";
+import Credentials from "next-auth/providers/credentials";
+import bcrypt from "bcrypt";
 
 import { env } from "~/env";
 import { db } from "~/server/db";
-import { mysqlTable } from "~/server/db/schema";
+import { users } from "./db/schema";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -48,11 +50,112 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   },
-  adapter: DrizzleAdapter(db, mysqlTable) as Adapter,
+  adapter: DrizzleAdapter(db) as Adapter,
   providers: [
-    DiscordProvider({
-      clientId: env.DISCORD_CLIENT_ID,
-      clientSecret: env.DISCORD_CLIENT_SECRET,
+    Credentials({
+      id: "sign-in",
+      name: "Sign in",
+      credentials: {
+        email: {
+          label: "Email",
+          type: "email",
+          placeholder: "your@email.com",
+        },
+        password: {
+          label: "Password",
+          type: "password",
+        },
+      },
+      async authorize(credentials, req) {
+        // if credentials have been passed
+        if (credentials?.email) {
+          // look up the user in the database
+          try {
+            const user = await db.query.users.findFirst({
+              where: (users, filters) =>
+                filters.eq(users.email, credentials?.email),
+            });
+
+            // if a user was found, return the user object
+            if (user) return user;
+          } catch (error) {
+            console.error("error", error);
+          }
+        }
+
+        return null;
+      },
+    }),
+    Credentials({
+      id: "sign-up",
+      name: "Sign up with email and password",
+      credentials: {
+        name: {
+          label: "Name",
+          type: "text",
+          placeholder: "Full Name",
+        },
+        email: {
+          label: "Email",
+          type: "email",
+          placeholder: "your@email.com",
+        },
+        mobile: {
+          label: "Mobile",
+          type: "text",
+          placeholder: "Mobile Number",
+        },
+        password: {
+          label: "Password",
+          type: "password",
+        },
+      },
+      async authorize(credentials, req) {
+        console.log("new credentials", credentials);
+        // if credentials have been passed
+        if (credentials?.email) {
+          // look up the user in the database
+          const user = await db.query.users.findFirst({
+            where: (users, filters) =>
+              filters.eq(users.email, credentials?.email),
+          });
+
+          console.log("new user search", user);
+
+          // if a user was found, return error saying user already exists
+          if (user) {
+            console.log("found user");
+            return null;
+          }
+
+          console.log("no user found");
+
+          // if no user was found, create a new user
+          try {
+            const newUser = await db
+              .insert(users)
+              .values({
+                id: crypto.randomUUID(),
+                name: credentials.name,
+                email: credentials.email,
+                emailVerified: new Date(),
+                image: null,
+                passwordHash: bcrypt.hashSync(credentials.password, 10),
+              })
+              .returning();
+
+            console.log("newUser", newUser);
+
+            if (newUser[0]) {
+              return newUser[0];
+            }
+          } catch (error) {
+            console.error(error);
+          }
+        }
+
+        return null;
+      },
     }),
     /**
      * ...add more providers here.

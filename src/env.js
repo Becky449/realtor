@@ -9,9 +9,9 @@ export const env = createEnv({
   server: {
     DATABASE_PORT: z.coerce.number().default(5432),
     DATABASE_HOST: z.string().default("localhost"),
-    DATABASE_NAME: z.string().default("realtor"),
-    DATABASE_USER: z.string().default("realtor"),
-    DATABASE_PASSWORD: z.string().default("realtor"),
+    DATABASE_NAME: z.string().default("postgres"),
+    DATABASE_USER: z.string().default("postgres"),
+    DATABASE_PASSWORD: z.string().default("postgres"),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
