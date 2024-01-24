@@ -12,6 +12,7 @@ import { db } from "~/server/db";
 import { createTable } from "~/server/db/schema";
 import { api } from "~/trpc/server";
 import bcrypt from "bcrypt";
+import { decode, encode } from "next-auth/jwt";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -34,13 +35,31 @@ declare module "next-auth" {
   // }
 }
 
+const adapter = DrizzleAdapter(db, createTable);
+
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
  *
  * @see https://next-auth.js.org/configuration/options
  */
 export const authOptions: NextAuthOptions = {
+  jwt: {
+    encode: async ({ secret, token, maxAge }) => {
+      return encode({ secret, token, maxAge });
+    },
+    decode: async ({ token, secret }) => {
+      return decode({ secret, token });
+    },
+  },
   callbacks: {
+    signIn: async ({ user, account, profile, email, credentials }) => {
+      adapter.createSession!({
+        sessionToken: crypto.randomUUID(),
+        userId: user.id,
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
+      });
+      return true;
+    },
     session: ({ session, user }) => ({
       ...session,
       user: {
@@ -49,7 +68,10 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   },
-  adapter: DrizzleAdapter(db, createTable) as Adapter,
+  adapter: adapter as Adapter,
+  pages: {
+    signIn: "/auth/signin",
+  },
   providers: [
     Credentials({
       id: "email-password",
@@ -69,6 +91,8 @@ export const authOptions: NextAuthOptions = {
           email: credentials.email,
           password: bcrypt.hashSync(credentials.password, 10),
         });
+
+        if (user) return user;
 
         return null;
       },
