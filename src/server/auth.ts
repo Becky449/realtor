@@ -5,10 +5,13 @@ import {
   type NextAuthOptions,
 } from "next-auth";
 import { type Adapter } from "next-auth/adapters";
+import Credentials from "next-auth/providers/credentials";
 
 import { env } from "~/env";
 import { db } from "~/server/db";
 import { createTable } from "~/server/db/schema";
+import { api } from "~/trpc/server";
+import bcrypt from "bcrypt";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -48,6 +51,28 @@ export const authOptions: NextAuthOptions = {
   },
   adapter: DrizzleAdapter(db, createTable) as Adapter,
   providers: [
+    Credentials({
+      id: "email-password",
+      name: "Email and Password",
+      credentials: {
+        email: { label: "Email", type: "email", placeholder: "your@email.com" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        // if no credentials have been supplied, return null to indicate no user
+        if (!credentials || !credentials.email || !credentials.password) {
+          return null;
+        }
+
+        // lookup user in database
+        const user = await api.user.getByEmailAndPassword.query({
+          email: credentials.email,
+          password: bcrypt.hashSync(credentials.password, 10),
+        });
+
+        return null;
+      },
+    }),
     /**
      * ...add more providers here.
      *
