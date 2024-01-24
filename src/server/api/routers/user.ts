@@ -27,14 +27,11 @@ export const userRouter = createTRPCRouter({
         .returning();
     }),
   getByEmailAndPassword: publicProcedure
-    .input(z.object({ email: z.string().email(), password: z.string() }))
+    .input(z.object({ email: z.string().email() }))
     .query(({ ctx, input }) => {
       return ctx.db.query.users.findFirst({
         where(fields, operators) {
-          return operators.and(
-            operators.eq(fields.email, input.email),
-            operators.eq(fields.passwordHash, input.password),
-          );
+          return operators.eq(fields.email, input.email);
         },
       });
     }),

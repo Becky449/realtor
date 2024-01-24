@@ -30,16 +30,16 @@ export default function SignInForm() {
       return;
     }
 
-    console.log(data);
-
-    const response = await signIn("signin-email", {
-      redirect: false,
-      email: data.email,
-      password: data.passwordHash,
-      callbackUrl: "http://localhost:3000",
-    });
-
-    console.log(response);
+    const response = await fetch(
+      "http://localhost:3000/api/auth/callback/email-password",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email: data.email,
+          password: data.passwordHash,
+        }),
+      },
+    );
   };
 
   return (

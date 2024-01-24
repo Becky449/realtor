@@ -1,3 +1,5 @@
+"use server";
+
 import { db } from "~/server/db";
 import { accounts, users } from "~/server/db/schema";
 import bcrypt from "bcrypt";
