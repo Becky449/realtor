@@ -1,90 +1,116 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
-  boolean,
+  index,
   integer,
-  jsonb,
-  pgEnum,
-  pgTable,
+  pgTableCreator,
   primaryKey,
   serial,
   text,
   timestamp,
+  varchar,
 } from "drizzle-orm/pg-core";
-import { AdapterAccount } from "next-auth/adapters";
+import { type AdapterAccount } from "next-auth/adapters";
 
-export const userType = pgEnum("user_type", ["client", "member", "both"]);
-export const userStatus = pgEnum("user_status", ["active", "deleted"]);
-export const loginMethod = pgEnum("login_method", ["email", "phone", "oauth"]);
+/**
+ * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
+ * database instance for multiple projects.
+ *
+ * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
+ */
+export const createTable = pgTableCreator((name) => `realtor-app_${name}`);
 
-export const users = pgTable("users", {
-  /** minimum requirements for nextauth **/
-  id: text("id").primaryKey(),
-  name: text("name"),
-  email: text("email").notNull(),
-  emailVerified: timestamp("emailVerified", { mode: "date" }),
-  image: text("image"),
-  /** end of minimum requirements for nextauth **/
-  passwordHash: text("password_hash"),
-  createdAt: timestamp("created_at", {
-    mode: "date",
-    withTimezone: true,
+export const posts = createTable(
+  "post",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 256 }),
+    createdById: varchar("createdById", { length: 255 })
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updatedAt"),
+  },
+  (example) => ({
+    createdByIdIdx: index("createdById_idx").on(example.createdById),
+    nameIndex: index("name_idx").on(example.name),
   })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", {
+);
+
+export const users = createTable("user", {
+  id: varchar("id", { length: 255 }).notNull().primaryKey(),
+  name: varchar("name", { length: 255 }),
+  email: varchar("email", { length: 255 }).notNull(),
+  emailVerified: timestamp("emailVerified", {
     mode: "date",
-    withTimezone: true,
-  })
-    .notNull()
-    .defaultNow(),
+  }).default(sql`CURRENT_TIMESTAMP`),
+  image: varchar("image", { length: 255 }),
 });
 
-const userRelations = relations(users, (helpers) => ({
-  sessions: helpers.many(sessions),
+export const usersRelations = relations(users, ({ many }) => ({
+  accounts: many(accounts),
 }));
 
-export const accounts = pgTable(
+export const accounts = createTable(
   "account",
   {
-    userId: text("userId")
+    userId: varchar("userId", { length: 255 })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    type: text("type").$type<AdapterAccount["type"]>().notNull(),
-    provider: text("provider").notNull(),
-    providerAccountId: text("providerAccountId").notNull(),
+      .references(() => users.id),
+    type: varchar("type", { length: 255 })
+      .$type<AdapterAccount["type"]>()
+      .notNull(),
+    provider: varchar("provider", { length: 255 }).notNull(),
+    providerAccountId: varchar("providerAccountId", { length: 255 }).notNull(),
     refresh_token: text("refresh_token"),
     access_token: text("access_token"),
     expires_at: integer("expires_at"),
-    token_type: text("token_type"),
-    scope: text("scope"),
+    token_type: varchar("token_type", { length: 255 }),
+    scope: varchar("scope", { length: 255 }),
     id_token: text("id_token"),
-    session_state: text("session_state"),
+    session_state: varchar("session_state", { length: 255 }),
   },
   (account) => ({
     compoundKey: primaryKey({
       columns: [account.provider, account.providerAccountId],
     }),
-  }),
+    userIdIdx: index("account_userId_idx").on(account.userId),
+  })
 );
 
-export const sessions = pgTable("sessions", {
-  /* minimum requirements for nextauth */
-  sessionToken: text("sessoinToken").notNull().primaryKey(),
-  userId: text("userId")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
-  expires: timestamp("expires", { mode: "date" }).notNull(),
-  /* end of minimum requirements for nextauth */
-});
+export const accountsRelations = relations(accounts, ({ one }) => ({
+  user: one(users, { fields: [accounts.userId], references: [users.id] }),
+}));
 
-export const verificationTokens = pgTable(
+export const sessions = createTable(
+  "session",
+  {
+    sessionToken: varchar("sessionToken", { length: 255 })
+      .notNull()
+      .primaryKey(),
+    userId: varchar("userId", { length: 255 })
+      .notNull()
+      .references(() => users.id),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (session) => ({
+    userIdIdx: index("session_userId_idx").on(session.userId),
+  })
+);
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const verificationTokens = createTable(
   "verificationToken",
   {
-    identifer: text("identifier").notNull(),
-    token: text("token").notNull(),
+    identifier: varchar("identifier", { length: 255 }).notNull(),
+    token: varchar("token", { length: 255 }).notNull(),
     expires: timestamp("expires", { mode: "date" }).notNull(),
   },
   (vt) => ({
-    compoundKey: primaryKey({ columns: [vt.identifer, vt.token] }),
-  }),
+    compoundKey: primaryKey({ columns: [vt.identifier, vt.token] }),
+  })
 );

@@ -1,15 +1,12 @@
 import { type Config } from "drizzle-kit";
 
-import { env } from "~/env";
+import { env } from "~/env.js";
 
 export default {
   schema: "./src/server/db/schema.ts",
   driver: "pg",
   dbCredentials: {
-    host: env.DATABASE_HOST,
-    port: env.DATABASE_PORT,
-    user: env.DATABASE_USER,
-    password: env.DATABASE_PASSWORD,
-    database: env.DATABASE_NAME,
+    connectionString: env.DATABASE_URL,
   },
+  tablesFilter: ["realtor-app_*"],
 } satisfies Config;

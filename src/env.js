@@ -7,11 +7,13 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    DATABASE_PORT: z.coerce.number().default(5432),
-    DATABASE_HOST: z.string().default("localhost"),
-    DATABASE_NAME: z.string().default("postgres"),
-    DATABASE_USER: z.string().default("postgres"),
-    DATABASE_PASSWORD: z.string().default("postgres"),
+    DATABASE_URL: z
+      .string()
+      .url()
+      .refine(
+        (str) => !str.includes("YOUR_MYSQL_URL_HERE"),
+        "You forgot to change the default URL"
+      ),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -24,8 +26,10 @@ export const env = createEnv({
       // Since NextAuth.js automatically uses the VERCEL_URL if present.
       (str) => process.env.VERCEL_URL ?? str,
       // VERCEL_URL doesn't include `https` so it cant be validated as a URL
-      process.env.VERCEL ? z.string() : z.string().url(),
+      process.env.VERCEL ? z.string() : z.string().url()
     ),
+    DISCORD_CLIENT_ID: z.string(),
+    DISCORD_CLIENT_SECRET: z.string(),
   },
 
   /**
@@ -42,14 +46,12 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
-    DATABASE_HOST: process.env.DATABASE_HOST,
-    DATABASE_PORT: process.env.DATABASE_PORT,
-    DATABASE_NAME: process.env.DATABASE_NAME,
-    DATABASE_USER: process.env.DATABASE_USER,
-    DATABASE_PASSWORD: process.env.DATABASE_PASSWORD,
+    DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
+    DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
